@@ -1,0 +1,387 @@
+﻿<UserControl x:Class="InteractiveGraphUserControl.GridGraph"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
+        xmlns:local="clr-namespace:InteractiveGraphUserControl"
+        xmlns:vm="clr-namespace:InteractiveGraphUserControl.MVVM"
+        xmlns:utility="clr-namespace:InteractiveGraphUserControl.Utility"
+        xmlns:converter="clr-namespace:InteractiveGraphUserControl.Converters"
+        xmlns:rules="clr-namespace:InteractiveGraphUserControl.Rules"
+        xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+        mc:Ignorable="d"
+        Height="502.869" Width="935.246">
+
+    <UserControl.Resources>
+        <converter:BooleanToVisibilityConverter x:Key="bvc"/>
+        <converter:BooleanToIntConverter x:Key="bic"/>
+        <converter:CellBackgroundConverter x:Key="CellBackground"/>
+        <converter:CellBackgroundMultiConverter x:Key="MultiCellBackground"/>
+        <converter:UnitConverter x:Key="Unit"/>
+        <converter:SpeedUnitConverter x:Key="SpeedUnit"/>
+    </UserControl.Resources>
+
+    <Grid Background="Teal" Margin="0,-7,0,7">
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="197*"/>
+            <RowDefinition Height="306*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="822*"/>
+            <ColumnDefinition Width="113*"/>
+        </Grid.ColumnDefinitions>
+
+        <!--#####GRAPH AREA######-->
+        <Grid Name="GraphView"
+                Background="White" 
+                Margin="10,10,10,10"
+                Grid.Column="0" MinWidth="500" MinHeight="200" Grid.ColumnSpan="1" Grid.Row="1">
+            <i:Interaction.Triggers>
+                <i:EventTrigger EventName="MouseMove">
+                    <i:InvokeCommandAction Command="{Binding MouseMove}" />
+                </i:EventTrigger>
+                <i:EventTrigger EventName="MouseUp">
+                    <i:InvokeCommandAction Command="{Binding MouseUp}"/>
+                </i:EventTrigger>
+            </i:Interaction.Triggers>
+            <lvc:CartesianChart Grid.Row="1" Name="Chart" DataClickCommand="{Binding DataClickCommand}" UpdaterTickCommand="{Binding UpdaterTickCommand}" DataHoverCommand="{Binding DataHoverCommand}">
+                <!--Récupération de la position de la souris-->
+                <i:Interaction.Behaviors>
+                    <utility:MouseBehaviour MouseX="{Binding PanelX, Mode=OneWayToSource}" MouseY="{Binding PanelY, Mode=OneWayToSource}"/>
+                </i:Interaction.Behaviors>
+                <lvc:CartesianChart.AxisY>
+                    <lvc:Axis Name="PositionAxis" Foreground="DodgerBlue" Title="Position" Position="RightTop" MaxValue="{Binding PositionAxisMax}" MinValue="{Binding PositionAxisMin}">
+                        <lvc:Axis.Separator>
+                            <lvc:Separator Stroke="LightBlue" StrokeThickness="{Binding PosSepCheck, Converter={StaticResource bic}}"/>
+                        </lvc:Axis.Separator>
+                    </lvc:Axis>
+                    <lvc:Axis Name="LoadAxis" Foreground="IndianRed" Title="Load" MaxValue="{Binding LoadAxisMax}" MinValue="{Binding LoadAxisMin}">
+                        <lvc:Axis.Separator>
+                            <lvc:Separator StrokeThickness="{Binding LoadSepCheck, Converter={StaticResource bic}}" Stroke="LightCoral" />
+                        </lvc:Axis.Separator>
+                    </lvc:Axis>
+                    <lvc:Axis Name="InitialisationAxis" Foreground="Transparent" Title="Initialisation" Position="RightTop" Visibility="Collapsed" MinValue="0" MaxValue="3"/>
+                </lvc:CartesianChart.AxisY>
+                <lvc:CartesianChart.Series>
+                    <lvc:LineSeries StrokeDashArray="8" Stroke="DodgerBlue" LineSmoothness="0" Title ="DestPos" Values="{Binding DestPosSeriesValues}" ScalesYAt="0" Visibility="{Binding DestPosCheck, Converter={StaticResource bvc}}"/>
+                    <lvc:LineSeries StrokeDashArray="8" Stroke="IndianRed" LineSmoothness="0" Title ="DestLoad" Values="{Binding DestLoadSeriesValues}" ScalesYAt="1" Visibility="{Binding DestLoadCheck, Converter={StaticResource bvc}}"/>
+                    <lvc:LineSeries PointGeometry="{Binding SquareShape}" Stroke="DodgerBlue" LineSmoothness="0" Title ="LimPos" Values="{Binding LimPosSeriesValues}" ScalesYAt="0" Visibility="{Binding LimPosCheck, Converter={StaticResource bvc}}" />
+                    <lvc:LineSeries PointGeometry="{Binding SquareShape}" Stroke="IndianRed" LineSmoothness="0" Title ="LimLoad" Values="{Binding LimLoadSeriesValues}" ScalesYAt="1" Visibility="{Binding LimLoadCheck, Converter={StaticResource bvc}}"/>
+                    <lvc:LineSeries Fill="Orange" Stroke="Orange" LineSmoothness="0" Title ="InitialisationCurve" Values="{Binding InitialisationSeries}" ScalesYAt="2" Visibility="{Binding InitialisationCheck, Converter={StaticResource bvc}}"/>
+                </lvc:CartesianChart.Series>
+            </lvc:CartesianChart>
+            <!--Visual help when drag and dropping chart points-->
+            <Canvas Name="GraphOverlay" Grid.Row="1">
+                <Ellipse Canvas.Left="{Binding EllipseCanvasLeft}" Canvas.Top="{Binding EllipseCanvasTop}" Stroke="{Binding ShapesColor}" Fill="{Binding ShapesColor}" Width="20" Height="20" Opacity="{Binding ShapesOpacity}"/>
+                <!--Not used in the current version-->
+                <Line X1="{Binding LeftX1}" X2="{Binding LeftX2}" Y1="{Binding LeftY1}" Y2="{Binding LeftY2}" Stroke="{Binding ShapesColor}"  StrokeThickness="3" Opacity="0"/>
+                <Line X1="{Binding RightX1}" X2="{Binding RightX2}" Y1="{Binding RightY1}" Y2="{Binding RightY2}" Stroke="{Binding ShapesColor}"  StrokeThickness="3" Opacity="0"/>
+            </Canvas>
+            <Rectangle Opacity="0" Name="GraphTopBorder" StrokeThickness="0" Height="40" Margin="40,0" VerticalAlignment="Top" Width="Auto"/>
+            <Rectangle Opacity="0" Name="GraphBottomBorder" StrokeThickness="0" Height="40" Margin="40,0,40,22" VerticalAlignment="Bottom" Width="Auto"/>
+        </Grid>
+        <!--#####GIRD AREA#####-->
+        <Grid>
+            <DataGrid   Grid.Row="0" Grid.Column="0"
+                        Margin="10,10,10,10" 
+                        ItemsSource="{Binding DoliInputCollection}" AllowDrop="True" SelectionMode="Extended"
+                        SelectedItem="{Binding SelectedItem}"
+                        AutoGenerateColumns="False" ColumnWidth="*"
+                        Name="inputlist" 
+                        CanUserSortColumns="False"
+                        CanUserAddRows="False"
+                        MouseMove="OnMainGridMouseMove"
+                        DragEnter="OnMainGridCheckDropTarget"
+                        DragLeave="OnMainGridCheckDropTarget"
+                        DragOver="OnMainGridCheckDropTarget"
+                        Drop="OnMainGridDrop"
+                        DataContextChanged="OnMainGridDataContextChanged" 
+                        CanUserResizeColumns="True"
+                        GridLinesVisibility="Horizontal"
+                        CanUserResizeRows="True">
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="ValidationErrorTemplate">
+                            <Setter.Value>
+                                <ControlTemplate>
+                                    <Image Source="/Images/error.png"
+                                           ToolTip="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type DataGridRow}}, Path=(Validation.Errors)[0].ErrorContent}"
+                                           Width="11"
+                                           Height="11"/>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </DataGrid.RowStyle>
+                <DataGrid.CellStyle>
+                    <Style TargetType="DataGridCell">
+                        <Setter Property="TextBlock.TextAlignment" Value="Center" />
+                    </Style>
+                </DataGrid.CellStyle>
+                <DataGrid.Columns>
+                    <!--#################  TICK BOX  #####################-->
+                    <DataGridTemplateColumn Width="25">
+                        <DataGridTemplateColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTemplateColumn.HeaderStyle>
+                        <DataGridTemplateColumn.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="{x:Null}"/>
+                                        <Setter Property="BorderBrush" Value="{x:Null}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTemplateColumn.CellStyle>
+                        <DataGridTemplateColumn.Header>
+                            <CheckBox IsChecked="{Binding Path = DataContext.IsAllChecked, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=DataGrid,AncestorLevel=1}}" Command="{Binding Path = DataContext.CheckAll, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=DataGrid,AncestorLevel=1}}"/>
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}" Command="{Binding Path = DataContext.CheckStatus, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=DataGrid,AncestorLevel=1}}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <!--#################  DESTINATION CONTROL  #####################-->
+                    <DataGridTemplateColumn Header="Dest. Ctrl">
+                        <!--CellBorder for separation-->
+                        <DataGridTemplateColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="BorderBrush" Value="Black"/>
+                                <Setter Property="BorderThickness" Value="3 0 0 0"/>
+                            </Style>
+                        </DataGridTemplateColumn.HeaderStyle>
+                        <DataGridTemplateColumn.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="BorderBrush" Value="Black"/>
+                                <Setter Property="BorderThickness" Value="3 0 0 0"/>
+                            </Style>
+                        </DataGridTemplateColumn.CellStyle>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <ComboBox ItemsSource="{Binding CbItem}"
+                                          SelectedValue="{Binding DestCtrl , UpdateSourceTrigger=PropertyChanged}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <ComboBox ItemsSource="{Binding CbItem}" 
+                                          SelectedItem="{Binding DestCtrl, UpdateSourceTrigger=PropertyChanged}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
+                    <!--#################  DESTINATION  #####################-->
+                    <DataGridTextColumn Binding="{Binding Destination, Mode=TwoWay}" Header="Destination" >
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="{x:Type TextBlock}">
+                                <Setter Property="Background" Value="{Binding DestCtrl, Converter={StaticResource CellBackground}}"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <!--#################  UNIT  #####################-->
+                    <DataGridTextColumn IsReadOnly="True" Header="Unit" Width="30">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="{x:Type TextBlock}">
+                                <Setter Property="Text" Value="{Binding DestCtrl, Converter={StaticResource Unit}}"/>
+                                <Setter Property="Background" Value="LightGray"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <!--#################  DESTINATION MODE  #####################-->
+                    <DataGridTemplateColumn Header="Dest. Mode">
+                        <!--CellBorder for separation-->
+                        <DataGridTemplateColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="BorderBrush" Value="Black"/>
+                                <Setter Property="BorderThickness" Value="0 0 3 0"/>
+                            </Style>
+                        </DataGridTemplateColumn.HeaderStyle>
+                        <DataGridTemplateColumn.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="BorderBrush" Value="Black"/>
+                                <Setter Property="BorderThickness" Value="0 0 3 0"/>
+                                <!--Il faut remettre cette propriété parce que le style est réécrit ici-->
+                                <Setter Property="TextBlock.TextAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTemplateColumn.CellStyle>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <ComboBox ItemsSource="{Binding DestModeItem}"
+                                          SelectedValue="{Binding DestMode , UpdateSourceTrigger=PropertyChanged}">
+                                </ComboBox>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <ComboBox ItemsSource="{Binding DestModeItem}" 
+                                          SelectedItem="{Binding DestMode, UpdateSourceTrigger=PropertyChanged}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
+                    <!--#################  CTRL MOVE  #####################-->
+                    <DataGridTemplateColumn Header="Move Ctrl">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <ComboBox ItemsSource="{Binding CbItem}">
+                                    <ComboBox.SelectedItem>
+                                        <Binding Path="MoveCtrl"
+                                                 UpdateSourceTrigger="PropertyChanged">
+                                            <Binding.ValidationRules>
+                                                <rules:MoveCtrlRule ValidationStep="UpdatedValue" ValidatesOnTargetUpdated="True"/>
+                                            </Binding.ValidationRules>
+                                        </Binding>
+                                    </ComboBox.SelectedItem>
+                                </ComboBox>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <ComboBox ItemsSource="{Binding CbItem}" 
+                                          SelectedItem="{Binding MoveCtrl, UpdateSourceTrigger=PropertyChanged}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
+                    <!--#################  SPEED  #####################-->
+                    <DataGridTextColumn Binding="{Binding Speed, Mode=TwoWay}" Header="Speed" Width="50"/>
+                    <!--#################  UNIT  #####################-->
+                    <DataGridTextColumn IsReadOnly="True" Header="Unit" Width="40">
+                        <!--CellBorder for separation-->
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="BorderBrush" Value="Black"/>
+                                <Setter Property="BorderThickness" Value="0 0 3 0"/>
+                            </Style>
+                        </DataGridTextColumn.HeaderStyle>
+                        <DataGridTextColumn.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="BorderBrush" Value="Black"/>
+                                <Setter Property="BorderThickness" Value="0 0 3 0"/>
+                                <!--Il faut remettre cette propriété parce que le style est réécrit ici-->
+                                <Setter Property="TextBlock.TextAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTextColumn.CellStyle>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="{x:Type TextBlock}">
+                                <Setter Property="Text" Value="{Binding MoveCtrl, Converter={StaticResource SpeedUnit}}"/>
+                                <Setter Property="Background" Value="LightGray"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <!--#################  LIMIT MODE  #####################-->
+                    <DataGridTemplateColumn Header="Limit Mode">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <ComboBox ItemsSource="{Binding LimModeItem}">
+                                    <ComboBox.SelectedItem>
+                                        <Binding Path="LimMode"
+                                                 UpdateSourceTrigger="PropertyChanged">
+                                            <Binding.ValidationRules>
+                                                <rules:RelativeLimitModeRule ValidationStep="UpdatedValue" ValidatesOnTargetUpdated="True"/>
+                                            </Binding.ValidationRules>
+                                        </Binding>
+                                    </ComboBox.SelectedItem>
+                                </ComboBox>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <ComboBox ItemsSource="{Binding LimModeItem}" 
+                                          SelectedItem="{Binding LimMode, UpdateSourceTrigger=PropertyChanged}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
+                    <!--#################  LIMIT  #####################-->
+                    <DataGridTextColumn Binding="{Binding Limit, Mode=TwoWay}" Header="Limit" >
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="{x:Type TextBlock}">
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <MultiBinding Converter="{StaticResource MultiCellBackground}">
+                                            <Binding Path="MoveCtrl"/>
+                                            <Binding Path="LimMode"/>
+                                        </MultiBinding>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding LimMode}" Value="Not Active">
+                                        <Setter Property="IsEnabled" Value="False"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+
+                    </DataGridTextColumn>
+                    <!--#################  UNIT  #####################-->
+                    <DataGridTextColumn IsReadOnly="True" Header="Unit" Width="30">
+                        <!--CellBorder for separation-->
+                        <DataGridTextColumn.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="BorderBrush" Value="Black"/>
+                                <Setter Property="BorderThickness" Value="0 0 3 0"/>
+                                <!--Il faut remettre cette propriété parce que le style est réécrit ici-->
+                                <Setter Property="TextBlock.TextAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTextColumn.CellStyle>
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="BorderBrush" Value="Black"/>
+                                <Setter Property="BorderThickness" Value="0 0 3 0"/>
+                            </Style>
+                        </DataGridTextColumn.HeaderStyle>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="{x:Type TextBlock}">
+                                <Setter Property="Text" Value="{Binding MoveCtrl, Converter={StaticResource Unit}}"/>
+                                <Setter Property="Background" Value="LightGray"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+                <DataGrid.RowValidationRules>
+                    <rules:RelativeLimitModeRule ValidationStep="UpdatedValue"/>
+                </DataGrid.RowValidationRules>
+            </DataGrid>
+
+        </Grid>
+        <Grid x:Name="BtnArea" Grid.Column="1" Grid.Row="0">
+            <Border BorderBrush="Black" BorderThickness="2"/>
+            <Button Content="Button" HorizontalAlignment="Left" Margin="19,167,0,0" VerticalAlignment="Top" Width="75" Click="Button_Click" Height="20" Grid.Column="1"/>
+            <Button Content="Suppr" Command="{Binding DeleteItem}" ToolTip="" HorizontalAlignment="Left" Margin="20,13,0,0" VerticalAlignment="Top" Width="74" Grid.Column="1" Height="20"/>
+            <Button Content="Add" Command="{Binding AddRow}" ToolTip="" HorizontalAlignment="Left" Margin="20,38,0,0" VerticalAlignment="Top" Width="74" Grid.Column="1" Height="20"/>
+            <Button Content="Update Graph" Command="{Binding Doli2Graph}" Grid.Column="1" HorizontalAlignment="Left" Margin="20,63,0,0" VerticalAlignment="Top" Width="75" Height="20"/>
+            <Button Content="Duplicate" Command="{Binding Duplicate}" Grid.Column="1" HorizontalAlignment="Left" Margin="20,88,0,0" VerticalAlignment="Top" Width="75" Height="20"/>
+        </Grid>
+        <Grid Grid.Row="1" Grid.Column="1">
+            <StackPanel x:Name="CurvePanel" VerticalAlignment="Top" Height="120" Margin="10,10,10,100">
+                <TextBlock Text="Curves" FontSize="20" HorizontalAlignment="Center"/>
+                <TextBlock Text="" FontSize="10" HorizontalAlignment="Center"/>
+                <CheckBox Content="Limit Load" IsChecked="{Binding LimLoadCheck, UpdateSourceTrigger=PropertyChanged}"/>
+                <CheckBox Content="Limit Position" IsChecked="{Binding LimPosCheck, UpdateSourceTrigger=PropertyChanged}"/>
+                <CheckBox Content="Dest Load" IsChecked="{Binding DestLoadCheck, UpdateSourceTrigger=PropertyChanged}"/>
+                <CheckBox Content="Dest Pos" IsChecked="{Binding DestPosCheck, UpdateSourceTrigger=PropertyChanged}"/>
+                <CheckBox Content="Iniatilisation" IsChecked="{Binding InitialisationCheck, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+            <StackPanel x:Name="SeparatorPanel" VerticalAlignment="Top" Height="120" Margin="10,140,10,10">
+                <TextBlock Text="Separators" FontSize="20" HorizontalAlignment="Center"/>
+                <TextBlock Text="" FontSize="10" HorizontalAlignment="Center"/>
+                <CheckBox Content="Position" IsChecked="{Binding PosSepCheck, UpdateSourceTrigger=PropertyChanged}"/>
+                <CheckBox Content="Load" IsChecked="{Binding LoadSepCheck, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+        </Grid>
+
+
+
+
+
+        <!--<Border Name="GraphTopBorder" BorderBrush="Black" BorderThickness="0" Height="40" Margin="40,54,40,40" Grid.Row="1" VerticalAlignment="Top" Width="Auto"/>
+        <Border Name="GraphBottomBorder" BorderBrush="Black" BorderThickness="0" Height="40" Margin="40,0,40,54" Grid.Row="1" VerticalAlignment="Bottom" Width="Auto"/>-->
+    </Grid>
+</UserControl>
