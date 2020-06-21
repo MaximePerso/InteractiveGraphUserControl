@@ -9,7 +9,7 @@ namespace InteractiveGraphUserControl.MVVM
 
         public GridParam()
         {
-            CbItem = new List<string> { "Position", "Load" };
+            CbItem = new List<string> { "Position", "Load", "Maintain" };
         }
     }
 }

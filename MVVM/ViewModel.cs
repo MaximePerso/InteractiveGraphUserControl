@@ -15,6 +15,7 @@ using LiveCharts.Defaults;
 using LiveCharts.Wpf;
 using LiveCharts.Wpf.Charts.Base;
 using LiveCharts.Events;
+using System.Runtime.InteropServices;
 
 namespace InteractiveGraphUserControl.MVVM
 {
@@ -73,6 +74,9 @@ namespace InteractiveGraphUserControl.MVVM
         private double _rightX2;
         private double _rightY1;
         private double _rightY2;
+        private bool? _isAllChecked;
+        private bool? _isCycle;
+        private int _nbCycle;
         //private variables that have no properties associated to 
         private double _circleRadius = 10;
         private string _seriesName;
@@ -108,6 +112,7 @@ namespace InteractiveGraphUserControl.MVVM
         public ICommand CheckAll { get; set; }
         public ICommand CheckStatus { get; set; }
         public ICommand Duplicate { get; set; }
+        public ICommand AddMaintain { get; set; }
         public GraphCommand<ChartPoint> DataClickCommand { get; set; }
         public GraphCommand<LiveCharts.Wpf.CartesianChart> UpdaterTickCommand { get; set; }
         public GraphCommand<RangeChangedEventArgs> RangeChangedCommand { get; set; }
@@ -128,6 +133,26 @@ namespace InteractiveGraphUserControl.MVVM
         }
         #endregion
 
+        #region Cycle
+        public bool? IsCycle
+        {
+            get => _isCycle;
+            set
+            {
+                _isCycle = value;
+                OnPropertyChanged("IsCycle");
+            }
+        }
+        public int NbCycle
+        {
+            get => _nbCycle;
+            set
+            {
+                _nbCycle = value;
+                OnPropertyChanged("NbCycle");
+            }
+        }
+        #endregion
         #region Grid
         public int ItemCount
         {
@@ -139,7 +164,6 @@ namespace InteractiveGraphUserControl.MVVM
             }
         }
 
-        private bool? _isAllChecked;
         public bool? IsAllChecked
         {
             get => _isAllChecked;
@@ -583,6 +607,7 @@ namespace InteractiveGraphUserControl.MVVM
             //il faudrait alors remplacer la ligne suivante part:
             // AddRow = new AddRowCommand(this);
             AddRow = new RelayCommand(o => { DoliInputCollection.Add(new DoliInput(false, 0, "", 0, "", 0, "", 0, "")); }, o => true); //dans la version command il faut qu'une ligne soit sélectionnée pour que le bouton soit actif (CanExecute), la c'est tout le temps vrai
+            AddMaintain = new RelayCommand(o => { DoliInputCollection.Add(new DoliInput(false, 0, "Maintain", 0, "", 0, "", 0, "")); }, o => true);
             //DeleteItem = new RelayCommand(o => { DoliInputCollection.Remove(SelectedItem); }, o => { return (SelectedItem != null); }); 
             DeleteItem = new RelayCommand(o => DeleteInput(), o => { return (IsAllChecked == null || IsAllChecked == true); }); 
             MouseMove = new RelayCommand(o => MouseMoveLogic(), o => { return (MouseState != 0); }); 
@@ -595,8 +620,9 @@ namespace InteractiveGraphUserControl.MVVM
             //Create inputList
             _doliInputCollection = new ObservableCollection<DoliInput>();
 
-            //Set tha all selected to uncheck
+            //Set checkboxes
             _isAllChecked = false;
+            _isCycle = false;
 
             //Set _selectedSeries to avoid problems
             _selectedSeries = DestLoadSeriesValues;
@@ -1077,8 +1103,32 @@ namespace InteractiveGraphUserControl.MVVM
                     LimPosSeriesValues.Add(NewLimPos);
                 }
             }
+            if(IsCycle == true)
+            {
+                CycleGraphImplementation(NbCycle);
+            }
         }
+        private void CycleGraphImplementation(double numberOfCycles)
+        {
+            //On fait une copie des SeriesValues
+            ChartValues<ObservablePoint> _tempDestLoad = DestLoadSeriesValues; ;
+            ChartValues<ObservablePoint> _tempDestPos = DestPosSeriesValues;
+            ChartValues<ObservablePoint> _tempLimLoad = LimLoadSeriesValues;
+            ChartValues<ObservablePoint> _tempLimPos = LimPosSeriesValues;
+            //On récupère la dernière abscisse
+            double _curX = _tempDestLoad.Last().X;
 
+            //On réinjecte les points en mettant à jour l'abscisse pour que ça se suive
+            for(int i = 0; i<numberOfCycles; i++)
+            {
+                //on update l'absisse (tout les poitns des chaque série ont les même absisses)
+                _curX += _tempDestLoad[i].X;
+                DestLoadSeriesValues.Add(new ObservablePoint(_curX, _tempDestLoad[i].Y));
+                DestLoadSeriesValues.Add(new ObservablePoint(_curX, _tempDestPos[i].Y));
+                DestLoadSeriesValues.Add(new ObservablePoint(_curX, _tempLimLoad[i].Y));
+                DestLoadSeriesValues.Add(new ObservablePoint(_curX, _tempLimPos[i].Y));
+            }
+        }
         private void CheckAllFunc()
         {
             if(IsAllChecked == true)

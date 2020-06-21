@@ -20,7 +20,9 @@
         <converter:CellBackgroundMultiConverter x:Key="MultiCellBackground"/>
         <converter:UnitConverter x:Key="Unit"/>
         <converter:SpeedUnitConverter x:Key="SpeedUnit"/>
+
     </UserControl.Resources>
+    
 
     <Grid Background="Teal" Margin="0,-7,0,7">
 
@@ -351,13 +353,21 @@
             </DataGrid>
 
         </Grid>
-        <Grid x:Name="BtnArea" Grid.Column="1" Grid.Row="0">
+        <Grid Name="BtnArea" Grid.Column="1" Grid.Row="0">
             <Border BorderBrush="Black" BorderThickness="2"/>
-            <Button Content="Button" HorizontalAlignment="Left" Margin="19,167,0,0" VerticalAlignment="Top" Width="75" Click="Button_Click" Height="20" Grid.Column="1"/>
-            <Button Content="Suppr" Command="{Binding DeleteItem}" ToolTip="" HorizontalAlignment="Left" Margin="20,13,0,0" VerticalAlignment="Top" Width="74" Grid.Column="1" Height="20"/>
-            <Button Content="Add" Command="{Binding AddRow}" ToolTip="" HorizontalAlignment="Left" Margin="20,38,0,0" VerticalAlignment="Top" Width="74" Grid.Column="1" Height="20"/>
-            <Button Content="Update Graph" Command="{Binding Doli2Graph}" Grid.Column="1" HorizontalAlignment="Left" Margin="20,63,0,0" VerticalAlignment="Top" Width="75" Height="20"/>
-            <Button Content="Duplicate" Command="{Binding Duplicate}" Grid.Column="1" HorizontalAlignment="Left" Margin="20,88,0,0" VerticalAlignment="Top" Width="75" Height="20"/>
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="Beige" Content="Suppr" Command="{Binding DeleteItem}" ToolTip="" HorizontalAlignment="Stretch" Margin="1,75,1,0" VerticalAlignment="Top" Width="Auto" Height="Auto"/>
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="Beige" Command="{Binding AddRow}" ToolTip="" HorizontalAlignment="Stretch" VerticalAlignment="Top" Width="Auto" Height="Auto" Margin="2,2,2,0" BorderThickness="0">
+                <TextBlock TextAlignment="Center">Add<LineBreak/>Displacement</TextBlock>
+            </Button>
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="Beige" Command="{Binding AddMaintain}" HorizontalAlignment="Stretch" Margin="1,38,1,0" VerticalAlignment="Top" Width="Auto" Height="Auto">
+                <TextBlock TextAlignment="Center">Add<LineBreak/>Maintain</TextBlock>
+            </Button>
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="Beige" Content="Update Graph" Command="{Binding Doli2Graph}" HorizontalAlignment="Stretch" Margin="1,96,1,0" VerticalAlignment="Top" Width="Auto" Height="Auto"/>
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="Beige" Content="Duplicate" Command="{Binding Duplicate}" HorizontalAlignment="Stretch" Margin="1,117,1,0" VerticalAlignment="Top" Width="Auto" Height="Auto"/>
+            <Grid Margin="2,139,2,2" Background="Beige">
+                <CheckBox IsChecked="{Binding IsCycle}" Content="Cycle"/>
+                <TextBox Text="{Binding NbCylce}" Margin="0,23,0,13" Height="auto"/>
+            </Grid>
         </Grid>
         <Grid Grid.Row="1" Grid.Column="1">
             <StackPanel x:Name="CurvePanel" VerticalAlignment="Top" Height="120" Margin="10,10,10,100">
