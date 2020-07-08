@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
         xmlns:local="clr-namespace:InteractiveGraphUserControl"
-        xmlns:vm="clr-namespace:InteractiveGraphUserControl.MVVM"
+        xmlns:mvvm="clr-namespace:InteractiveGraphUserControl.MVVM"
         xmlns:utility="clr-namespace:InteractiveGraphUserControl.Utility"
         xmlns:converter="clr-namespace:InteractiveGraphUserControl.Converters"
         xmlns:rules="clr-namespace:InteractiveGraphUserControl.Rules"
@@ -14,15 +14,36 @@
         Height="502.869" Width="935.246">
 
     <UserControl.Resources>
+        <ResourceDictionary>
         <converter:BooleanToVisibilityConverter x:Key="bvc"/>
         <converter:BooleanToIntConverter x:Key="bic"/>
         <converter:CellBackgroundConverter x:Key="CellBackground"/>
         <converter:CellBackgroundMultiConverter x:Key="MultiCellBackground"/>
         <converter:UnitConverter x:Key="Unit"/>
         <converter:SpeedUnitConverter x:Key="SpeedUnit"/>
+        <converter:CellBackgroundMultiConverterDestination x:Key="DestBg"/>
 
+        <mvvm:ViewModel x:Key="vm"/>
+
+            <Style TargetType="{x:Type Button}">
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type Button}">
+                            <Border Background="{TemplateBinding Background}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.5"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+        </ResourceDictionary>
     </UserControl.Resources>
-    
 
     <Grid Background="Teal" Margin="0,-7,0,7">
 
@@ -31,15 +52,34 @@
             <RowDefinition Height="306*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="822*"/>
+            <ColumnDefinition Width="54*"/>
+            <ColumnDefinition Width="768*"/>
             <ColumnDefinition Width="113*"/>
         </Grid.ColumnDefinitions>
-
+        <!--Save/Load area-->
+        <Grid Grid.Column="0" Grid.Row="0">
+            <StackPanel Orientation="Vertical">
+                <Separator Margin="10" Width="0"/>
+                <Button Command="{Binding SaveCommand}" Height="30" Width="30">
+                    <Button.Background>
+                        <ImageBrush ImageSource="Images/save.png"/>
+                    </Button.Background>
+                </Button>
+                <Label Content="Save" HorizontalAlignment="Center" Foreground="GhostWhite" FontWeight="Bold"/>
+                <Separator Margin="10" Width="0"/>
+                <Button Command="{Binding LoadCommand}" Height="30" Width="30">
+                    <Button.Background>
+                        <ImageBrush ImageSource="Images/folder.png"/>
+                    </Button.Background>
+                </Button>
+                <Label Content="Load" HorizontalAlignment="Center" Foreground="GhostWhite" FontWeight="Bold"/>
+            </StackPanel>
+        </Grid>
         <!--#####GRAPH AREA######-->
         <Grid Name="GraphView"
                 Background="White" 
                 Margin="10,10,10,10"
-                Grid.Column="0" MinWidth="500" MinHeight="200" Grid.ColumnSpan="1" Grid.Row="1">
+                Grid.Column="0" MinWidth="500" MinHeight="200" Grid.ColumnSpan="2" Grid.Row="1">
             <i:Interaction.Triggers>
                 <i:EventTrigger EventName="MouseMove">
                     <i:InvokeCommandAction Command="{Binding MouseMove}" />
@@ -85,7 +125,7 @@
             <Rectangle Opacity="0" Name="GraphBottomBorder" StrokeThickness="0" Height="40" Margin="40,0,40,22" VerticalAlignment="Bottom" Width="Auto"/>
         </Grid>
         <!--#####GIRD AREA#####-->
-        <Grid>
+        <Grid Grid.Column="1">
             <DataGrid   Grid.Row="0" Grid.Column="0"
                         Margin="10,10,10,10" 
                         ItemsSource="{Binding DoliInputCollection}" AllowDrop="True" SelectionMode="Extended"
@@ -170,13 +210,13 @@
                         </DataGridTemplateColumn.CellStyle>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <ComboBox ItemsSource="{Binding CbItem}"
+                                <ComboBox ItemsSource="{Binding Source={StaticResource vm}, Path=CbItem}"
                                           SelectedValue="{Binding DestCtrl , UpdateSourceTrigger=PropertyChanged}"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                         <DataGridTemplateColumn.CellEditingTemplate>
                             <DataTemplate>
-                                <ComboBox ItemsSource="{Binding CbItem}" 
+                                <ComboBox ItemsSource="{Binding Source={StaticResource vm}, Path=CbItem}" 
                                           SelectedItem="{Binding DestCtrl, UpdateSourceTrigger=PropertyChanged}" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellEditingTemplate>
@@ -184,9 +224,19 @@
                     <!--#################  DESTINATION  #####################-->
                     <DataGridTextColumn Binding="{Binding Destination, Mode=TwoWay}" Header="Destination" >
                         <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="{x:Type TextBlock}">
-                                <Setter Property="Background" Value="{Binding DestCtrl, Converter={StaticResource CellBackground}}"/>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <MultiBinding Converter="{StaticResource DestBg}">
+                                            <Binding Path="MoveCtrl"/>
+                                            <Binding Path="DestCtrl"/>
+                                        </MultiBinding>
+                                    </Setter.Value>
+                                </Setter>
                             </Style>
+                            <!--<Style TargetType="{x:Type TextBlock}">
+                                <Setter Property="Background" Value="{Binding DestCtrl, Converter={StaticResource CellBackground}}"/>
+                            </Style>-->
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <!--#################  UNIT  #####################-->
@@ -217,14 +267,14 @@
                         </DataGridTemplateColumn.CellStyle>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <ComboBox ItemsSource="{Binding DestModeItem}"
+                                <ComboBox ItemsSource="{Binding Source={StaticResource vm}, Path=DestModeItem}"
                                           SelectedValue="{Binding DestMode , UpdateSourceTrigger=PropertyChanged}">
                                 </ComboBox>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                         <DataGridTemplateColumn.CellEditingTemplate>
                             <DataTemplate>
-                                <ComboBox ItemsSource="{Binding DestModeItem}" 
+                                <ComboBox ItemsSource="{Binding vm.CbItem}" 
                                           SelectedItem="{Binding DestMode, UpdateSourceTrigger=PropertyChanged}" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellEditingTemplate>
@@ -233,7 +283,7 @@
                     <DataGridTemplateColumn Header="Move Ctrl">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <ComboBox ItemsSource="{Binding CbItem}">
+                                <ComboBox ItemsSource="{Binding Source={StaticResource vm}, Path=CTRLMoveOptions}">
                                     <ComboBox.SelectedItem>
                                         <Binding Path="MoveCtrl"
                                                  UpdateSourceTrigger="PropertyChanged">
@@ -247,13 +297,14 @@
                         </DataGridTemplateColumn.CellTemplate>
                         <DataGridTemplateColumn.CellEditingTemplate>
                             <DataTemplate>
-                                <ComboBox ItemsSource="{Binding CbItem}" 
+                                <ComboBox ItemsSource="{Binding Source={StaticResource vm}, Path=CTRLMoveOption}" 
                                           SelectedItem="{Binding MoveCtrl, UpdateSourceTrigger=PropertyChanged}" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellEditingTemplate>
                     </DataGridTemplateColumn>
                     <!--#################  SPEED  #####################-->
                     <DataGridTextColumn Binding="{Binding Speed, Mode=TwoWay}" Header="Speed" Width="50"/>
+
                     <!--#################  UNIT  #####################-->
                     <DataGridTextColumn IsReadOnly="True" Header="Unit" Width="40">
                         <!--CellBorder for separation-->
@@ -282,7 +333,7 @@
                     <DataGridTemplateColumn Header="Limit Mode">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <ComboBox ItemsSource="{Binding LimModeItem}">
+                                <ComboBox ItemsSource="{Binding Source={StaticResource vm}, Path=LimModeItem}">
                                     <ComboBox.SelectedItem>
                                         <Binding Path="LimMode"
                                                  UpdateSourceTrigger="PropertyChanged">
@@ -296,7 +347,7 @@
                         </DataGridTemplateColumn.CellTemplate>
                         <DataGridTemplateColumn.CellEditingTemplate>
                             <DataTemplate>
-                                <ComboBox ItemsSource="{Binding LimModeItem}" 
+                                <ComboBox ItemsSource="{Binding Source={StaticResource vm}, Path=LimModeItem}" 
                                           SelectedItem="{Binding LimMode, UpdateSourceTrigger=PropertyChanged}" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellEditingTemplate>
@@ -353,23 +404,23 @@
             </DataGrid>
 
         </Grid>
-        <Grid Name="BtnArea" Grid.Column="1" Grid.Row="0">
+        <Grid x:Name="BtnArea" Grid.Column="2" Grid.Row="0">
             <Border BorderBrush="Black" BorderThickness="2"/>
-            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="Beige" Content="Suppr" Command="{Binding DeleteItem}" ToolTip="" HorizontalAlignment="Stretch" Margin="1,75,1,0" VerticalAlignment="Top" Width="Auto" Height="Auto"/>
-            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="Beige" Command="{Binding AddRow}" ToolTip="" HorizontalAlignment="Stretch" VerticalAlignment="Top" Width="Auto" Height="Auto" Margin="2,2,2,0" BorderThickness="0">
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="GhostWhite" Content="Suppr" Command="{Binding DeleteItem}" ToolTip="" HorizontalAlignment="Stretch" Margin="1,75,1,0" VerticalAlignment="Top" Width="Auto" Height="Auto"/>
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="GhostWhite" Command="{Binding AddRow}" ToolTip="" HorizontalAlignment="Stretch" VerticalAlignment="Top" Width="Auto" Height="Auto" Margin="2,2,2,0" BorderThickness="0">
                 <TextBlock TextAlignment="Center">Add<LineBreak/>Displacement</TextBlock>
             </Button>
-            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="Beige" Command="{Binding AddMaintain}" HorizontalAlignment="Stretch" Margin="1,38,1,0" VerticalAlignment="Top" Width="Auto" Height="Auto">
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="GhostWhite" Command="{Binding AddMaintain}" HorizontalAlignment="Stretch" Margin="1,38,1,0" VerticalAlignment="Top" Width="Auto" Height="Auto">
                 <TextBlock TextAlignment="Center">Add<LineBreak/>Maintain</TextBlock>
             </Button>
-            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="Beige" Content="Update Graph" Command="{Binding Doli2Graph}" HorizontalAlignment="Stretch" Margin="1,96,1,0" VerticalAlignment="Top" Width="Auto" Height="Auto"/>
-            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="Beige" Content="Duplicate" Command="{Binding Duplicate}" HorizontalAlignment="Stretch" Margin="1,117,1,0" VerticalAlignment="Top" Width="Auto" Height="Auto"/>
-            <Grid Margin="2,139,2,2" Background="Beige">
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="GhostWhite" Content="Update Graph" Command="{Binding Doli2Graph}" HorizontalAlignment="Stretch" Margin="1,96,1,0" VerticalAlignment="Top" Width="Auto" Height="Auto"/>
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Background="GhostWhite" Content="Duplicate" Command="{Binding Duplicate}" HorizontalAlignment="Stretch" Margin="1,117,1,0" VerticalAlignment="Top" Width="Auto" Height="Auto"/>
+            <Grid Margin="2,139,2,2" Background="GhostWhite">
                 <CheckBox IsChecked="{Binding IsCycle}" Content="Cycle"/>
-                <TextBox Text="{Binding NbCylce}" Margin="0,23,0,13" Height="auto"/>
+                <TextBox Text="{Binding NbCycle}" Margin="0,23,0,13" Height="auto"/>
             </Grid>
         </Grid>
-        <Grid Grid.Row="1" Grid.Column="1">
+        <Grid Grid.Row="1" Grid.Column="2">
             <StackPanel x:Name="CurvePanel" VerticalAlignment="Top" Height="120" Margin="10,10,10,100">
                 <TextBlock Text="Curves" FontSize="20" HorizontalAlignment="Center"/>
                 <TextBlock Text="" FontSize="10" HorizontalAlignment="Center"/>

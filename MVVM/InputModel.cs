@@ -21,9 +21,6 @@ namespace InteractiveGraphUserControl.MVVM
         private string _destMode;
         private int _seqNb;
         private bool _isChecked;
-        private List<string> _cbItem = new List<string> { "Position", "Load" };
-        private List<string> _limModeItem = new List<string> { "Absolute", "Relative", "Not Active" };
-        private List<string> _destModeItem = new List<string> { "Approach", "Position", "Maintain" };
         #endregion
 
         #region Properties
@@ -34,16 +31,23 @@ namespace InteractiveGraphUserControl.MVVM
             {
                 _moveCtrl = value;
                 OnPropertyChanged("MoveCtrl");
+                if (value == "Halt")
+                {
+                    Speed = 1;
+                    LimMode = "Not Active";
+                    Limit = double.NaN;
+                    DestMode = "Maintain";
+                }
             }
         }
-        public double Speed 
-        { 
-            get => _speed; 
-            set 
-            { 
-                _speed = value; 
-                OnPropertyChanged("Speed"); 
-            } 
+        public double Speed
+        {
+            get => _speed;
+            set
+            {
+                _speed = value;
+                OnPropertyChanged("Speed");
+            }
         }
         public string LimMode
         {
@@ -76,23 +80,23 @@ namespace InteractiveGraphUserControl.MVVM
         {
             get => _destination;
             set
-            { 
-                _destination = value; 
-                OnPropertyChanged("Destination"); 
+            {
+                _destination = value;
+                OnPropertyChanged("Destination");
             }
         }
-        public string DestMode 
-        { 
-            get => _destMode; 
-            set 
+        public string DestMode
+        {
+            get => _destMode;
+            set
             {
-                _destMode = value; 
-                OnPropertyChanged("Duration"); 
-            } 
+                _destMode = value;
+                OnPropertyChanged("DestMode");
+            }
         }
 
-        public int SequenceNumber 
-        { 
+        public int SequenceNumber
+        {
             get => _seqNb;
             set
             {
@@ -111,16 +115,13 @@ namespace InteractiveGraphUserControl.MVVM
             }
         }
 
-        public List<string> CbItem { get => _cbItem; set => _cbItem = value; }
-        public List<string> LimModeItem { get => _limModeItem; set => _limModeItem = value; }
-        public List<string> DestModeItem { get => _destModeItem; set => _destModeItem = value; }
 
 
         #endregion
 
         #region Constructor
-        
-        public DoliInput(){  }
+
+        public DoliInput() { }
 
         public DoliInput(bool IsChecked, int SequenceNumber, string MoveCtrl, double Speed, string LimMode, double Limit, string DestCtrl, double Destination, string DestMode)
         {
@@ -135,11 +136,13 @@ namespace InteractiveGraphUserControl.MVVM
             this._destMode = DestMode;
         }
         #endregion
+
+
     }
 
 
 
-    
+
 
 
 }

@@ -18,6 +18,8 @@ namespace InteractiveGraphUserControl.Converters
                     return "N/s";
                 case "Position":
                     return "mm/s";
+                case "Halt":
+                    return "s";
                 default:
                     return "";
             }

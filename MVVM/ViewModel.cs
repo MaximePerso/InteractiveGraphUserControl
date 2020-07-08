@@ -89,11 +89,18 @@ namespace InteractiveGraphUserControl.MVVM
         public double AllTimePosAxisMax = -double.MaxValue;
         //shapes
         public Geometry SquareShape { get; set; }
-
+        //Save/Load config
+        private SaveLoad saveLoad;
+        //Combboboxes
+        private List<string> _CTRLMoveOptions = new List<string> { "Position", "Load", "Halt" };
+        private List<string> _cbItem = new List<string> { "Position", "Load" };
+        private List<string> _limModeItem = new List<string> { "Absolute", "Relative", "Not Active" };
+        private List<string> _destModeItem = new List<string> { "Approach", "Position", "Maintain" };
 
         #endregion
 
         #region Constructor
+        public ViewModel() { }
 
         public ViewModel(IView chartView)
         {
@@ -113,10 +120,13 @@ namespace InteractiveGraphUserControl.MVVM
         public ICommand CheckStatus { get; set; }
         public ICommand Duplicate { get; set; }
         public ICommand AddMaintain { get; set; }
+        public ICommand SaveCommand { get; set; }
+        public ICommand LoadCommand { get; set; }
         public GraphCommand<ChartPoint> DataClickCommand { get; set; }
         public GraphCommand<LiveCharts.Wpf.CartesianChart> UpdaterTickCommand { get; set; }
         public GraphCommand<RangeChangedEventArgs> RangeChangedCommand { get; set; }
         public GraphCommand<ChartPoint> DataHoverCommand { get; set; }
+
         #endregion
 
         #region Properties
@@ -153,7 +163,9 @@ namespace InteractiveGraphUserControl.MVVM
             }
         }
         #endregion
+
         #region Grid
+
         public int ItemCount
         {
             get => _itemCount;
@@ -174,6 +186,13 @@ namespace InteractiveGraphUserControl.MVVM
             }
         }
         public DoliInput SelectedItem { get; set; }
+
+        #region Combobox
+        public List<string> CbItem { get => _cbItem; set => _cbItem = value; }
+        public List<string> CTRLMoveOptions { get => _CTRLMoveOptions; set => _CTRLMoveOptions = value; }
+        public List<string> LimModeItem { get => _limModeItem; set => _limModeItem = value; }
+        public List<string> DestModeItem { get => _destModeItem; set => _destModeItem = value; }
+        #endregion
 
         #endregion
 
@@ -607,18 +626,23 @@ namespace InteractiveGraphUserControl.MVVM
             //il faudrait alors remplacer la ligne suivante part:
             // AddRow = new AddRowCommand(this);
             AddRow = new RelayCommand(o => { DoliInputCollection.Add(new DoliInput(false, 0, "", 0, "", 0, "", 0, "")); }, o => true); //dans la version command il faut qu'une ligne soit sélectionnée pour que le bouton soit actif (CanExecute), la c'est tout le temps vrai
-            AddMaintain = new RelayCommand(o => { DoliInputCollection.Add(new DoliInput(false, 0, "Maintain", 0, "", 0, "", 0, "")); }, o => true);
+            AddMaintain = new RelayCommand(o => Maintain(), o => true);
             //DeleteItem = new RelayCommand(o => { DoliInputCollection.Remove(SelectedItem); }, o => { return (SelectedItem != null); }); 
-            DeleteItem = new RelayCommand(o => DeleteInput(), o => { return (IsAllChecked == null || IsAllChecked == true); }); 
-            MouseMove = new RelayCommand(o => MouseMoveLogic(), o => { return (MouseState != 0); }); 
+            DeleteItem = new RelayCommand(o => DeleteInput(), o => { return (IsAllChecked == null || IsAllChecked == true); });
+            MouseMove = new RelayCommand(o => MouseMoveLogic(), o => { return (MouseState != 0); });
             MouseUp = new RelayCommand(o => MouseUpLogic(), o => { return (MouseState != 0); });
             Doli2Graph = new RelayCommand(o => DoliToGraph(), o => true);
             CheckAll = new RelayCommand(o => CheckAllFunc(), o => true);
             CheckStatus = new RelayCommand(o => StatusCheck(), o => true);
             Duplicate = new RelayCommand(o => DuplicateInput(), o => { return (IsAllChecked == null || IsAllChecked == true); });
+            SaveCommand = new RelayCommand(o => SaveConfig());
+            LoadCommand = new RelayCommand(o => LoadConfig());
 
             //Create inputList
             _doliInputCollection = new ObservableCollection<DoliInput>();
+
+            //save load
+            saveLoad = new SaveLoad();
 
             //Set checkboxes
             _isAllChecked = false;
@@ -628,12 +652,12 @@ namespace InteractiveGraphUserControl.MVVM
             _selectedSeries = DestLoadSeriesValues;
 
             //Add items
-            _doliInputCollection.Add(new DoliInput(false, 1,"Load", 500, "Absolute",10,"Position", 3, "Approach"));
-            _doliInputCollection.Add(new DoliInput(false, 0,"Load", 500, "Not Active",10,"Load", 3000, "Approach"));
-            _doliInputCollection.Add(new DoliInput(false, 0,"Load", 250, "Not Active", 10,"Load", 4000, "Approach"));
-            _doliInputCollection.Add(new DoliInput(false, 0,"Load", 500, "Not Active", 10,"Load", 10000, "Approach"));
-            _doliInputCollection.Add(new DoliInput(false, 1,"Load", 1000, "Absolute",10,"Position", 3, "Approach"));
-            _doliInputCollection.Add(new DoliInput(false, 1,"Position", 1, "Not Active", 10,"Position", 14, "Approach"));
+            _doliInputCollection.Add(new DoliInput(false, 1, "Load", 500, "Absolute", 10, "Position", 3, "Approach"));
+            _doliInputCollection.Add(new DoliInput(false, 0, "Load", 500, "Not Active", 10, "Load", 3000, "Approach"));
+            _doliInputCollection.Add(new DoliInput(false, 0, "Load", 250, "Not Active", 10, "Load", 4000, "Approach"));
+            _doliInputCollection.Add(new DoliInput(false, 0, "Load", 500, "Not Active", 10, "Load", 10000, "Approach"));
+            _doliInputCollection.Add(new DoliInput(false, 1, "Load", 1000, "Absolute", 10, "Position", 3, "Approach"));
+            _doliInputCollection.Add(new DoliInput(false, 1, "Position", 1, "Not Active", 10, "Position", 14, "Approach"));
 
             //Subscribe to the event that gets trigger when change occurs
             _doliInputCollection.CollectionChanged += OnDoliCollectionChanged;
@@ -714,11 +738,23 @@ namespace InteractiveGraphUserControl.MVVM
         #endregion
 
         #region Private Graph Methods
+        //Add Maintain
+        private void Maintain()
+        {
+            try
+            {
+                DoliInputCollection.Add(new DoliInput(false, 0, "Halt", 10, "Not Active", double.NaN, DoliInputCollection.Last().DestCtrl, DoliInputCollection.Last().Destination, "Maintain"));
+            }
+            catch
+            {
+                DoliInputCollection.Add(new DoliInput(false, 0, "Maintain", 10, "Not Active", double.NaN, "", 0, "Maintain"));
+            }
+        }
         //finds max in chart point list
         private double MaxValue(ChartValues<ObservablePoint> list, string CTRL)
         {
             double max;
-            if(CTRL == "load")
+            if (CTRL == "load")
             {
                 max = AllTimeLoadAxisMax;
             }
@@ -739,7 +775,7 @@ namespace InteractiveGraphUserControl.MVVM
             }
             else
             {
-                 AllTimePosAxisMax = max;
+                AllTimePosAxisMax = max;
             }
             max++;
             return max;
@@ -795,7 +831,7 @@ namespace InteractiveGraphUserControl.MVVM
                 AllTimePosAxisMax = -double.MaxValue;
             }
             catch { }
-            
+
         }
 
         private void MouseMoveLogic()
@@ -828,7 +864,7 @@ namespace InteractiveGraphUserControl.MVVM
                     LoadAxisMin = AllTimeLoadAxisMin;
 
             }
-            catch(Exception e) { Console.WriteLine(e); }
+            catch (Exception e) { Console.WriteLine(e); }
         }
 
         #region Graph Logic
@@ -841,11 +877,11 @@ namespace InteractiveGraphUserControl.MVVM
 
                 if (TopAreaMouseOver)
                 {
-                    OperationOnValue("Add",1);
+                    OperationOnValue("Add", 1);
                 }
                 else if (BottomAreaMouseOver)
                 {
-                    OperationOnValue("Add",-1);
+                    OperationOnValue("Add", -1);
                 }
                 else
                 {
@@ -974,7 +1010,7 @@ namespace InteractiveGraphUserControl.MVVM
         private void DeleteInput()
         {
             List<int> toRemove = new List<int>();
-            for(int i=0; i<DoliInputCollection.Count();i++)
+            for (int i = 0; i < DoliInputCollection.Count(); i++)
             {
                 DoliInput input = DoliInputCollection[i];
                 if (input.IsChecked)
@@ -998,12 +1034,13 @@ namespace InteractiveGraphUserControl.MVVM
             double initialGraphOffset = 0;
             ClearAllSeries();
 
-            for(int i =0; i<DoliInputCollection.Count();i++)
+            for (int i = 0; i < DoliInputCollection.Count(); i++)
             {
                 var input = DoliInputCollection[i];
                 //first input has to be treated differently
                 if (input.SequenceNumber == 1)
                 {
+                    //On stock tout comme s'il n'y avait une DestPos et une LimLoad. On corrige ensuite avec les if (plus rapide comme ça)
                     ObservablePoint NewDestLoad = new ObservablePoint(initialGraphOffset, double.NaN);
                     ObservablePoint NewDestPos = new ObservablePoint(initialGraphOffset, input.Destination);
                     ObservablePoint NewLimLoad = new ObservablePoint(initialGraphOffset, double.NaN);
@@ -1034,16 +1071,19 @@ namespace InteractiveGraphUserControl.MVVM
                     //previous input
                     var prevInput = DoliInputCollection[i - 1];
                     double prevDest;
-                    if(prevInput.DestCtrl == "Load")
+                    if (prevInput.DestCtrl == "Load")
                         prevDest = DestLoadSeriesValues[i - 1].Y;
                     else
                         prevDest = DestPosSeriesValues[i - 1].Y;
-                    
+
                     //slope determination
                     //representation of the time required to perform the command. IT IS JUST A REPRESENTATION BASED ON A DEFAULT SPEED, IT CANNOT BE ACCURATE FOR OBVIOUS REASONS
                     double timeSpan = input.Speed / defaultPosSpeed;
                     if (input.MoveCtrl == "Load")
                         timeSpan = input.Speed / defaultLoadSpeed;
+                    //case Halt is called, the timespan = time duration
+                    if (input.MoveCtrl == "Halt")
+                        timeSpan = input.Speed;
                     if (prevInput.DestCtrl == input.DestCtrl && input.DestCtrl == input.MoveCtrl)
                     {
                         double deltaDest = Math.Abs(input.Destination - prevDest);
@@ -1070,13 +1110,14 @@ namespace InteractiveGraphUserControl.MVVM
                     ObservablePoint NewLimLoad = new ObservablePoint(timeCoord, double.NaN);
                     ObservablePoint NewLimPos = new ObservablePoint(timeCoord, input.Limit);
 
+
                     if (input.DestCtrl == "Load")
                     {
                         NewDestLoad.Y = input.Destination;
                         NewDestPos.Y = double.NaN;
                     }
 
-                    if(input.LimMode == "Not Active")
+                    if (input.LimMode == "Not Active")
                     {
                         NewLimLoad.Y = double.NaN;
                         NewLimPos.Y = double.NaN;
@@ -1087,14 +1128,14 @@ namespace InteractiveGraphUserControl.MVVM
                         NewLimLoad.Y = input.Limit;
                         NewLimPos.Y = double.NaN;
                     }
-                    
+
                     if (input.LimMode == "Relative")
                     {
                         NewLimPos.Y = LimPosSeriesValues[i - 1].Y + input.Limit;
                         if (input.MoveCtrl == "Load")
                         {
                             NewLimLoad.Y = LimLoadSeriesValues[i - 1].Y + input.Limit;
-                            NewLimPos.Y = double.NaN; 
+                            NewLimPos.Y = double.NaN;
                         }
                     }
                     DestLoadSeriesValues.Add(NewDestLoad);
@@ -1103,37 +1144,39 @@ namespace InteractiveGraphUserControl.MVVM
                     LimPosSeriesValues.Add(NewLimPos);
                 }
             }
-            if(IsCycle == true)
+            if (IsCycle == true && NbCycle != 0)
             {
                 CycleGraphImplementation(NbCycle);
             }
         }
         private void CycleGraphImplementation(double numberOfCycles)
         {
-            //On fait une copie des SeriesValues
-            ChartValues<ObservablePoint> _tempDestLoad = DestLoadSeriesValues; ;
-            ChartValues<ObservablePoint> _tempDestPos = DestPosSeriesValues;
-            ChartValues<ObservablePoint> _tempLimLoad = LimLoadSeriesValues;
-            ChartValues<ObservablePoint> _tempLimPos = LimPosSeriesValues;
+            //On rrécupère le nombre de points que contiennent les séries (toutes le même)
+            double _nbPoints = DestLoadSeriesValues.Count();
             //On récupère la dernière abscisse
-            double _curX = _tempDestLoad.Last().X;
-
-            //On réinjecte les points en mettant à jour l'abscisse pour que ça se suive
-            for(int i = 0; i<numberOfCycles; i++)
+            double _lastX = DestLoadSeriesValues.Last().X;
+            //On loop sur le nombre de cycle spécifé par l'utilisateur. Le nombre de cylce représente le nb de répétition totale en comptant le cycle initial, d'où le -1
+            for (int i = 0; i < numberOfCycles - 1; i++)
             {
-                //on update l'absisse (tout les poitns des chaque série ont les même absisses)
-                _curX += _tempDestLoad[i].X;
-                DestLoadSeriesValues.Add(new ObservablePoint(_curX, _tempDestLoad[i].Y));
-                DestLoadSeriesValues.Add(new ObservablePoint(_curX, _tempDestPos[i].Y));
-                DestLoadSeriesValues.Add(new ObservablePoint(_curX, _tempLimLoad[i].Y));
-                DestLoadSeriesValues.Add(new ObservablePoint(_curX, _tempLimPos[i].Y));
+                //On réinjecte les points en mettant à jour l'abscisse pour que ça se suive
+                for (int j = 0; j < _nbPoints; j++)
+                {
+                    //Il faut multiplier _lastX par (i+1). Sans ça on recommence à chaque boucle. Il faut aussi que pour la première boucle on commence bien après _lastX, d'où le +1
+                    double _curX = _lastX * (i + 1) + DestLoadSeriesValues[j].X;
+                    Console.WriteLine(_curX);
+                    //on update l'absisse (tout les poitns des chaque série ont les même absisses)
+                    DestLoadSeriesValues.Add(new ObservablePoint(_curX, DestLoadSeriesValues[j].Y));
+                    DestPosSeriesValues.Add(new ObservablePoint(_curX, DestPosSeriesValues[j].Y));
+                    LimLoadSeriesValues.Add(new ObservablePoint(_curX, LimLoadSeriesValues[j].Y));
+                    LimPosSeriesValues.Add(new ObservablePoint(_curX, LimPosSeriesValues[j].Y));
+                }
             }
         }
         private void CheckAllFunc()
         {
-            if(IsAllChecked == true)
+            if (IsAllChecked == true)
             {
-                foreach(var input in DoliInputCollection)
+                foreach (var input in DoliInputCollection)
                 {
                     input.IsChecked = true;
                 }
@@ -1168,17 +1211,31 @@ namespace InteractiveGraphUserControl.MVVM
         private void DuplicateInput()
         {
             //sexier way to code the same idea as in DeleteInput()
-            foreach(var input in DoliInputCollection.ToList())
+            foreach (var input in DoliInputCollection.ToList())
             {
                 if (input.IsChecked)
                 {
                     input.IsChecked = false;
-                    DoliInputCollection.Add(new DoliInput(false,0,input.MoveCtrl, input.Speed, input.LimMode, input.Limit, input.DestCtrl, input.Destination, input.DestMode));
+                    DoliInputCollection.Add(new DoliInput(false, 0, input.MoveCtrl, input.Speed, input.LimMode, input.Limit, input.DestCtrl, input.Destination, input.DestMode));
                 }
             }
             StatusCheck();
         }
         #endregion
+        #endregion
+
+        #region Save/Load
+        private void SaveConfig()
+        {
+            saveLoad.Save(DoliInputCollection);
+        }
+
+        private void LoadConfig()
+        {
+            var load = saveLoad.Load();
+            if (load != null)
+                DoliInputCollection = load;
+        }
         #endregion
 
         #endregion
@@ -1215,7 +1272,7 @@ namespace InteractiveGraphUserControl.MVVM
                 double Y = _chartView.ToChartValue(GhostScalesYAt).Y;
                 if (SeriesName.Contains("Dest"))
                 {
-                    DoliInputCollection[SelectedPointKey].Destination = Math.Round(Y,1) ;
+                    DoliInputCollection[SelectedPointKey].Destination = Math.Round(Y, 1);
                     if (SeriesName.Contains("Load"))
                     {
                         DestLoadSeriesValues[SelectedPointKey].Y = Y;
@@ -1225,7 +1282,7 @@ namespace InteractiveGraphUserControl.MVVM
                 }
                 else
                 {
-                    DoliInputCollection[SelectedPointKey].Limit = Math.Round(Y,1);
+                    DoliInputCollection[SelectedPointKey].Limit = Math.Round(Y, 1);
                     if (SeriesName.Contains("Load"))
                     {
                         LimLoadSeriesValues[SelectedPointKey].Y = Y;
@@ -1274,14 +1331,6 @@ namespace InteractiveGraphUserControl.MVVM
 
 
         #endregion
-
-
-
-
-
-
-
-
 
     }
 }
